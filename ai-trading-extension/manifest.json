@@ -1,0 +1,103 @@
+{
+  "manifest_version": 3,
+  "name": "AI Trading Assistant",
+  "version": "1.0.0",
+  "description": "Autonomous AI trading across multiple trading platforms with advanced risk management",
+  
+  "permissions": [
+    "storage",
+    "activeTab",
+    "alarms",
+    "background",
+    "scripting",
+    "unlimitedStorage"
+  ],
+  
+  "host_permissions": [
+    "https://*.binance.com/*",
+    "https://*.coinbase.com/*",
+    "https://*.kucoin.com/*",
+    "https://*.alpaca.markets/*",
+    "https://*.interactivebrokers.com/*",
+    "https://*.schwab.com/*",
+    "https://*.td-ameritrade.com/*",
+    "https://*.robinhood.com/*",
+    "https://*.kraken.com/*",
+    "https://*.bybit.com/*",
+    "https://*.gate.io/*",
+    "https://*.mexc.com/*",
+    "https://*.okx.com/*",
+    "https://*.htx.com/*",
+    "https://*.crypto.com/*",
+    "https://*.bitfinex.com/*",
+    "https://*.bitget.com/*",
+    "https://*.bingx.com/*"
+  ],
+  
+  "background": {
+    "service_worker": "src/background/service-worker.js",
+    "type": "module"
+  },
+  
+  "content_scripts": [
+    {
+      "matches": [
+        "https://*.binance.com/*",
+        "https://*.coinbase.com/*",
+        "https://*.kucoin.com/*",
+        "https://*.alpaca.markets/*",
+        "https://*.interactivebrokers.com/*",
+        "https://*.schwab.com/*",
+        "https://*.td-ameritrade.com/*",
+        "https://*.robinhood.com/*",
+        "https://*.kraken.com/*",
+        "https://*.bybit.com/*",
+        "https://*.gate.io/*",
+        "https://*.mexc.com/*",
+        "https://*.okx.com/*",
+        "https://*.htx.com/*",
+        "https://*.crypto.com/*",
+        "https://*.bitfinex.com/*",
+        "https://*.bitget.com/*",
+        "https://*.bingx.com/*"
+      ],
+      "js": [
+        "src/content/platform-detector.js",
+        "src/content/trading-interface.js"
+      ],
+      "run_at": "document_start"
+    }
+  ],
+  
+  "action": {
+    "default_popup": "src/popup/popup.html",
+    "default_title": "AI Trading Assistant",
+    "default_icon": {
+      "16": "public/icons/icon16.png",
+      "32": "public/icons/icon32.png",
+      "48": "public/icons/icon48.png",
+      "128": "public/icons/icon128.png"
+    }
+  },
+  
+  "icons": {
+    "16": "public/icons/icon16.png",
+    "32": "public/icons/icon32.png",
+    "48": "public/icons/icon48.png",
+    "128": "public/icons/icon128.png"
+  },
+  
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "src/utils/injected-scripts.js",
+        "public/assets/*"
+      ],
+      "matches": ["<all_urls>"]
+    }
+  ],
+  
+  "externally_connectable": {
+    "matches": ["<all_urls>"]
+  }
+}

@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script type="text/javascript">
+  // This is a CodeSandbox injection script that's used to
+  // add navigation and inspector functionality to the preview
+  (function () {
+    // 1) Get the <script> tag that's currently running:
+    var me = document.currentScript;
+
+    // 2) Create the blocking‐style <script> to load:
+    var script = document.createElement("script");
+    script.src = "https://codesandbox.io/p/preview-protocol.js";
+
+    // By default a dynamically‐inserted <script> is async=true.
+    // Turn async off to make it behave like a normal blocking <script>:
+    script.async = false;
+    // (Do NOT set defer.)
+
+    // 3) Insert it immediately after the current <script>:
+    me.parentNode.insertBefore(script, me);
+  })();
+
+  const isIFramePreview = window.top !== window.self;
+
+  // Only run this script in editor context
+  if (isIFramePreview) {
+    // This script is used to enable Chrome DevTools functionality
+    (function () {
+      var script = document.createElement("script");
+      script.src =
+        "https://codesandbox.io/p/chrome-devtool/protocol/index.js";
+
+      script.onload = () => {
+        const devtoolProtocol = window.chobitsu;
+        if (devtoolProtocol) {
+          window.addEventListener("message", (event) => {
+            const { type, data } = event.data;
+
+            if (type === "FROM_DEVTOOL") {
+              devtoolProtocol.sendRawMessage(data);
+            }
+          });
+
+          devtoolProtocol.setOnMessage((data) => {
+            if (data.includes('"id":"tmp')) {
+              return;
+            }
+
+            window.parent.postMessage({ type: "TO_DEVTOOL", data }, "*");
+          });
+
+          devtoolProtocol.sendRawMessage(
+            `{"id":5,"method":"Runtime.enable","params":{}}`
+          );
+        }        
+      }
+
+      (document.head || document.documentElement).prepend(script);
+    })();
+  }
+
+  if (typeof __REACT_DEVTOOLS_GLOBAL_HOOK__ === "undefined") {
+    let nextID = 0;
+    let hook = (__REACT_DEVTOOLS_GLOBAL_HOOK__ = {
+      renderers: new Map(),
+      supportsFiber: true,
+      inject: (renderer) => {
+        const id = nextID++;
+        hook.renderers.set(id, renderer);
+        return id;
+      },
+      onScheduleFiberRoot() {},
+      onCommitFiberRoot() {},
+      onCommitFiberUnmount() {},
+    });
+  }
+
+  document.currentScript.remove();
+</script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Trading Assistant</title>
+    <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="logo">
+                <img src="../public/icons/icon32.png" alt="AI Trading" class="logo-icon">
+                <h1>AI Trading Assistant</h1>
+            </div>
+            <div class="status-indicator" id="statusIndicator">
+                <span class="status-dot"></span>
+                <span class="status-text">Inactive</span>
+            </div>
+        </header>
+
+        <!-- Navigation Tabs -->
+        <nav class="tabs">
+            <button class="tab-button active" data-tab="dashboard">Dashboard</button>
+            <button class="tab-button" data-tab="config">Config</button>
+            <button class="tab-button" data-tab="positions">Positions</button>
+            <button class="tab-button" data-tab="analytics">Analytics</button>
+        </nav>
+
+        <!-- Tab Content -->
+        <main class="tab-content">
+            <!-- Dashboard Tab -->
+            <div id="dashboard" class="tab-panel active">
+                <!-- Trading Controls -->
+                <section class="trading-controls">
+                    <div class="control-group">
+                        <button id="startTradingBtn" class="btn btn-primary">Start Trading</button>
+                        <button id="stopTradingBtn" class="btn btn-secondary" disabled>Stop Trading</button>
+                        <button id="emergencyStopBtn" class="btn btn-danger">Emergency Stop</button>
+                    </div>
+                    
+                    <div class="mode-selector">
+                        <label class="switch">
+                            <input type="checkbox" id="paperTradingMode" checked>
+                            <span class="slider">
+                                <span class="slider-text">Paper Trading</span>
+                            </span>
+                        </label>
+                    </div>
+                </section>
+
+                <!-- Quick Stats -->
+                <section class="quick-stats">
+                    <div class="stat-card">
+                        <div class="stat-value" id="totalPnL">+$0.00</div>
+                        <div class="stat-label">Total P&L</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="activePositions">0</div>
+                        <div class="stat-label">Active Positions</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="winRate">0%</div>
+                        <div class="stat-label">Win Rate</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="connectedPlatforms">0</div>
+                        <div class="stat-label">Connected Platforms</div>
+                    </div>
+                </section>
+
+                <!-- Recent Activity -->
+                <section class="recent-activity">
+                    <h3>Recent Activity</h3>
+                    <div class="activity-list" id="activityList">
+                        <div class="activity-item placeholder">
+                            <span>No recent activity</span>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Market Overview -->
+                <section class="market-overview">
+                    <h3>Market Overview</h3>
+                    <div class="market-grid" id="marketGrid">
+                        <!-- Market data will be populated here -->
+                    </div>
+                </section>
+            </div>
+
+            <!-- Configuration Tab -->
+            <div id="config" class="tab-panel">
+                <form id="configForm" class="config-form">
+                    <!-- Trading Platforms -->
+                    <section class="config-section">
+                        <h3>Trading Platforms</h3>
+                        <div id="platformsConfig"></div>
+                        <button type="button" class="btn btn-outline" id="addPlatformBtn">Add Platform</button>
+                    </section>
+
+                    <!-- Risk Management -->
+                    <section class="config-section">
+                        <h3>Risk Management</h3>
+                        <div class="form-group">
+                            <label for="maxPositionSize">Max Position Size (%)</label>
+                            <input type="number" id="maxPositionSize" min="0.1" max="10" step="0.1" value="2" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="maxDailyLoss">Max Daily Loss (%)</label>
+                            <input type="number" id="maxDailyLoss" min="0.1" max="5" step="0.1" value="1" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="stopLossPercentage">Default Stop Loss (%)</label>
+                            <input type="number" id="stopLossPercentage" min="0.5" max="10" step="0.1" value="2" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="takeProfitPercentage">Default Take Profit (%)</label>
+                            <input type="number" id="takeProfitPercentage" min="1" max="20" step="0.1" value="4" required>
+                        </div>
+                    </section>
+
+                    <!-- Trading Settings -->
+                    <section class="config-section">
+                        <h3>Trading Settings</h3>
+                        <div class="form-group">
+                            <label for="tradingTimeframes">Active Timeframes</label>
+                            <div class="checkbox-group">
+                                <label><input type="checkbox" value="1m" checked> 1 Minute</label>
+                                <label><input type="checkbox" value="5m" checked> 5 Minutes</label>
+                                <label><input type="checkbox" value="15m" checked> 15 Minutes</label>
+                                <label><input type="checkbox" value="1h"> 1 Hour</label>
+                                <label><input type="checkbox" value="4h"> 4 Hours</label>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="watchlist">Trading Watchlist</label>
+                            <textarea id="watchlist" placeholder="Enter symbols separated by commas (e.g., BTCUSDT, ETHUSDT, AAPL, TSLA)" rows="3"></textarea>
+                        </div>
+                    </section>
+
+                    <!-- AI Settings -->
+                    <section class="config-section">
+                        <h3>AI Configuration</h3>
+                        <div class="form-group">
+                            <label for="confidenceThreshold">Minimum Confidence Threshold</label>
+                            <input type="range" id="confidenceThreshold" min="0.5" max="0.95" step="0.05" value="0.7">
+                            <span class="range-value">70%</span>
+                        </div>
+                        <div class="form-group">
+                            <label for="aiStrategy">AI Strategy</label>
+                            <select id="aiStrategy">
+                                <option value="conservative">Conservative</option>
+                                <option value="balanced" selected>Balanced</option>
+                                <option value="aggressive">Aggressive</option>
+                                <option value="custom">Custom</option>
+                            </select>
+                        </div>
+                    </section>
+
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary">Save Configuration</button>
+                        <button type="button" class="btn btn-outline" id="resetConfigBtn">Reset to Defaults</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Positions Tab -->
+            <div id="positions" class="tab-panel">
+                <section class="positions-header">
+                    <h3>Active Positions</h3>
+                    <div class="position-filters">
+                        <select id="platformFilter">
+                            <option value="all">All Platforms</option>
+                        </select>
+                        <select id="statusFilter">
+                            <option value="all">All Status</option>
+                            <option value="open">Open</option>
+                            <option value="closed">Closed</option>
+                        </select>
+                    </div>
+                </section>
+
+                <div class="positions-table-container">
+                    <table class="positions-table">
+                        <thead>
+                            <tr>
+                                <th>Symbol</th>
+                                <th>Platform</th>
+                                <th>Side</th>
+                                <th>Size</th>
+                                <th>Entry Price</th>
+                                <th>Current Price</th>
+                                <th>P&L</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="positionsTableBody">
+                            <tr class="no-data">
+                                <td colspan="9">No positions found</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Manual Trading -->
+                <section class="manual-trading">
+                    <h3>Manual Trading</h3>
+                    <form id="manualTradeForm" class="manual-trade-form">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="tradeSymbol">Symbol</label>
+                                <input type="text" id="tradeSymbol" placeholder="e.g., BTCUSDT" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="tradePlatform">Platform</label>
+                                <select id="tradePlatform" required>
+                                    <option value="">Select Platform</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="tradeSide">Side</label>
+                                <select id="tradeSide" required>
+                                    <option value="BUY">Buy</option>
+                                    <option value="SELL">Sell</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="tradeQuantity">Quantity (%)</label>
+                                <input type="number" id="tradeQuantity" min="0.1" max="10" step="0.1" value="1" required>
+                            </div>
+                        </div>
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-primary">Execute Trade</button>
+                        </div>
+                    </form>
+                </section>
+            </div>
+
+            <!-- Analytics Tab -->
+            <div id="analytics" class="tab-panel">
+                <section class="analytics-overview">
+                    <h3>Performance Analytics</h3>
+                    <div class="analytics-period">
+                        <select id="analyticsPeriod">
+                            <option value="1d">Last 24 Hours</option>
+                            <option value="7d" selected>Last 7 Days</option>
+                            <option value="30d">Last 30 Days</option>
+                            <option value="all">All Time</option>
+                        </select>
+                    </div>
+                </section>
+
+                <!-- Performance Chart -->
+                <section class="chart-section">
+                    <div class="chart-container">
+                        <canvas id="performanceChart"></canvas>
+                    </div>
+                </section>
+
+                <!-- Analytics Grid -->
+                <section class="analytics-grid">
+                    <div class="analytics-card">
+                        <h4>Total Trades</h4>
+                        <div class="analytics-value" id="totalTrades">0</div>
+                    </div>
+                    <div class="analytics-card">
+                        <h4>Win Rate</h4>
+                        <div class="analytics-value" id="analyticsWinRate">0%</div>
+                    </div>
+                    <div class="analytics-card">
+                        <h4>Average Win</h4>
+                        <div class="analytics-value" id="avgWin">$0.00</div>
+                    </div>
+                    <div class="analytics-card">
+                        <h4>Average Loss</h4>
+                        <div class="analytics-value" id="avgLoss">$0.00</div>
+                    </div>
+                    <div class="analytics-card">
+                        <h4>Profit Factor</h4>
+                        <div class="analytics-value" id="profitFactor">0.00</div>
+                    </div>
+                    <div class="analytics-card">
+                        <h4>Max Drawdown</h4>
+                        <div class="analytics-value" id="maxDrawdown">0%</div>
+                    </div>
+                </section>
+
+                <!-- Trade History -->
+                <section class="trade-history">
+                    <h3>Recent Trades</h3>
+                    <div class="trades-table-container">
+                        <table class="trades-table">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Symbol</th>
+                                    <th>Platform</th>
+                                    <th>Side</th>
+                                    <th>Quantity</th>
+                                    <th>Entry</th>
+                                    <th>Exit</th>
+                                    <th>P&L</th>
+                                    <th>Duration</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tradesTableBody">
+                                <tr class="no-data">
+                                    <td colspan="9">No trades found</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+            </div>
+        </main>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <div class="footer-info">
+                <span id="lastUpdate">Last update: Never</span>
+                <span class="separator">•</span>
+                <span id="connectionStatus">Disconnected</span>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Modal for adding platforms -->
+    <div id="platformModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Add Trading Platform</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <form id="platformForm" class="modal-body">
+                <div class="form-group">
+                    <label for="platformName">Platform</label>
+                    <select id="platformName" required>
+                        <option value="">Select Platform</option>
+                        <option value="binance">Binance</option>
+                        <option value="coinbase">Coinbase</option>
+                        <option value="kucoin">KuCoin</option>
+                        <option value="kraken">Kraken</option>
+                        <option value="bybit">Bybit</option>
+                        <option value="alpaca">Alpaca</option>
+                        <option value="interactive_brokers">Interactive Brokers</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="apiKey">API Key</label>
+                    <input type="password" id="apiKey" required>
+                </div>
+                <div class="form-group">
+                    <label for="apiSecret">API Secret</label>
+                    <input type="password" id="apiSecret" required>
+                </div>
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="testMode" checked>
+                        Test Mode (Recommended)
+                    </label>
+                </div>
+            </form>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline" id="cancelPlatformBtn">Cancel</button>
+                <button type="submit" form="platformForm" class="btn btn-primary">Add Platform</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading overlay -->
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="spinner"></div>
+        <div class="loading-text">Processing...</div>
+    </div>
+
+    <script src="popup.js"></script>
+</body>
+</html>
